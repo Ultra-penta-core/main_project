@@ -1,6 +1,7 @@
 __5조 : 김 송, 이지현, 구민지, 한혜림, 채지혜__
 
-# 1. 국가별 GDP와 메달 수의 관계
+
+# 1. 올림픽 출전국가별 1인당 GDP와 메달 수의 관계
   - 국가별 1인당 GDP map visualization
   - 국가별 올림픽 총 메달 개수 map visualization
 
