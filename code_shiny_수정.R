@@ -88,8 +88,6 @@ world_spdf <- readOGR(
 gdp_medals <- read.csv(file = "./data/gdp_medals.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = FALSE)
 gdp_medals <- na.omit(gdp_medals)
 
-olympic_df <- read.csv(file = "./data/athlete_events.csv", fileEncoding="UTF-8-BOM", stringsAsFactors = FALSE)
-
 #match cases and spatial data via ISO3/Country Code
 world_spdf$Cases <- gdp_medals$Total[match(world_spdf$ISO3, gdp_medals$Code)]
 world_spdf$gdp <- gdp_medals$GDP.per.Capita[match(world_spdf$ISO3, gdp_medals$Code)]
