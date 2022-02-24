@@ -1,0 +1,168 @@
+---
+title: "타이타닉 데이터 분석과 예측"
+author: "Ultra Penta Core"
+date: '2022-2-24'
+output: html_document
+---
+
+# 과제 목차 
+* EDA와 시각화를 적용해 데이터셋을 분석하시오.
+* 생존자 예측 알고리즘의 적용을 위해 데이터 전처리를 실행하시오.
+* 타이타닉호의 생존자를 예측하기 위해 로지스틱 회귀를 적용하시오.
+* 정확한 생존자 예측 알고리즘을 위해 k-폴드 교차검증과 다양한 평가지표를 활용하시오.
+* R markdown으로 결과 보고서를 작성하시오
+
+# 분석 준비 단계 
+## 라이브러리
+
+```{r}
+library(readr)
+library(stringr)
+library(doBy)
+library(ggplot2)
+library(scales)
+library(RColorBrewer)
+library(corrplot)
+library(doBy)
+library(dplyr)
+library(randomForest)
+library(gridExtra)
+```
+
+
+## 데이터 가져오기
+
+```{r}
+train <- read_csv('C:/R/my-first-github/teamproject/data/train.csv')
+test <- read_csv('C:/R/my-first-github/teamproject/data/test.csv')
+full <- bind_rows(train, test)
+```
+
+## 전처리
+### 데이터 유형 변경
+```{r}
+full <- full %>%
+  mutate(Survived = factor(Survived),
+         Pclass   = factor(Pclass, ordered = T),
+         Name     = factor(Name),
+         Sex      = factor(Sex),
+         Embarked = factor(Embarked))
+
+str(full)
+
+```
+
+### 데이터, 결측치 확인하기
+```{r}
+head(full)
+str(full)
+summary(full)
+sapply(train, function(x) length(unique(x)))
+
+colSums(is.na(full))
+```
+
+구조 확인 결과 12개의 변수에 1,309개의 관측치가 있으며, [생존유무, 나이, 티켓 요금, 객실, 탑승항구]에 결측치가 존재한다.
+
+# 성별, 나이, 티켓클래스, 생존유무에 따른 EDA
+## 성별
+```{r}
+table(full$Sex)
+full %>% group_by(Survived, Sex) %>% summarise(freq = n())
+prop.table(table(full$Sex,full$Survived),1)
+```
+
+=> 여자의 생존확률이 높다.
+### 시각화
+```{r}
+sex.p1 <- full %>% 
+  dplyr::group_by(Sex) %>% 
+  summarize(N = n()) %>% 
+  ggplot(aes(Sex, N)) +
+  geom_col() +
+  geom_text(aes(label = N), size = 5, vjust = 1.2, color = "#FFFFFF") + 
+  ggtitle("탑승객 성별") +
+  labs(x = "성별", y = "인원수")
+
+sex.p2 <- full%>%
+  filter(!is.na(Survived)) %>%
+  ggplot(aes(factor(Sex), fill = factor(Survived))) +
+  scale_color_discrete(limits = c("사망","생존")) +
+  geom_bar(position = "fill") + 
+  scale_y_continuous(labels = percent) +
+  scale_fill_brewer(palette = "Set3") +
+  ggtitle("성별별 생존율") + 
+  labs(x = "성별", y = "생존율")
+
+grid.arrange(sex.p1,sex.p2,ncol=2)
+```
+
+## 티켓클래스
+```{r}
+table(full$Pclass)
+prop.table(table(full$Pclass,full$Survived),1)
+```
+=> 좋은 클래스일수록 생존율이 높다.
+
+
+### 시각화
+```{r}
+# 티켓클래스 막대그래프
+pclass.p1 <- full %>% 
+  dplyr::group_by(Pclass) %>% 
+  summarize(N = n()) %>% 
+  ggplot(aes(Pclass, N)) +
+  geom_col() +
+  geom_text(aes(label = N), size = 5, vjust = 1.2, color = "#FFFFFF") + 
+  ggtitle("티켓클래스") +
+  labs(x = "클래스", y = "티켓수")
+
+# 티켓클래스에 따른 생존률 막대그래프
+pclass.p2 <- full%>%
+  filter(!is.na(Survived)) %>%
+  ggplot(aes(factor(Pclass), fill = factor(Survived))) +
+  geom_bar(position = "fill") + 
+  scale_fill_brewer(palette = "Set3") +  
+  ggtitle("클래스별 생존율") + 
+  labs(x = "클래스", y = "생존율")
+
+grid.arrange(pclass.p1,pclass.p2,ncol=2)  
+```
+
+
+## 나이
+```{r}
+hist(full$Age)
+
+```
+### 시각화
+```{r}
+# 나이 분포 히스토그램
+age.p1 <- full %>% 
+  ggplot(aes(Age)) +
+  geom_histogram(col = "white",
+                 fill   = "tomato") +
+  ggtitle("탑승객의 성별 히스토그램") +
+  theme(plot.title = element_text(face = "bold", 
+                                  hjust = 0.5,
+                                  size = 15, color = "tomato"))
+
+# 나이에 따른 생존율 밀도그래프
+age.p2 <- full %>% 
+  filter(!is.na(Survived)) %>%
+  ggplot(aes(Age, fill = Survived)) + 
+  geom_density(alpha = .5) +
+  ggtitle("탑승객의 나이 분포") + 
+  theme(plot.title = element_text(face = "bold", hjust = 0.5,
+                                  size = 15, color = "tomato"))
+
+grid.arrange(age.p1,age.p2,ncol=2)
+
+```
+
+# Logistic Regression
+```{r}
+titan_glm <- glm(Survived ~ Sex+Age+Pclass, data = train, family = 'binomial')
+summary(titan_glm)
+
+```
